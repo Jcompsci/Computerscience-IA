@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Priority Table with Circum Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color:rgb(252, 230, 243);
+    }
+
+    h1 {
+      text-align: center;
+    }
+    /*priority table format*/
+    .priority-table {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      max-width: 800px;
+      margin: 20px auto;
+    }
+
+    .priority-cell {
+      border: 2px solid rgb(186, 97, 184);
+      border-radius: 8px;
+      padding: 15px;
+      background-color:rgb(252, 230, 243);
+      position: relative;
+    }
+
+    .priority-cell h2 {
+      font-size: 18px;
+      margin: 0 0 10px;
+    }
+
+    .add-circum {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: rgb(201, 85, 156);
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .circum-list {
+      list-style: none;
+      padding: 0;
+      margin-top: 10px;
+    }
+
+    .circum-list li {
+      background-color: #e3f2fd;
+      margin: 5px 0;
+      padding: 5px;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .delete-circum, .complete-circum {
+      background-color: #f44336;
+      color: white;
+      border: none;
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .delete-circum:hover {
+      background-color: #d32f2f;
+    }
+
+    .complete-circum {
+      background-color: #4caf50;
+    }
+
+    /* Progress Tracker */
+    .tracker-container {
+      margin: 20px auto;
+      width: 90%;
+      max-width: 600px;
+      background-color: #ddd;
+      height: 30px;
+      border-radius: 15px;
+      overflow: hidden;
+    }
+
+    .tracker-bar {
+      height: 100%;
+      background-color: rgb(186, 97, 184);
+      width: 0%;
+      transition: width 0.5s;
+    }
+
+    .tracker-text {
+      text-align: center;
+      line-height: 30px;
+      font-weight: bold;
+      color: black;
+    }
+
+    #overlay, #circumModal {
+      display: none;
+    }
+    /* Previous and Next button */
+   .button-link {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #ff69b4; /* Pink color */
+            color: white;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 25px; /* Rounded edges */
+            transition: background 0.3s ease;
+            margin: 10px; /* Adds space between buttons */
+        }
+
+        .button-link:hover {
+            background-color: #ff1493; /* Darker pink on hover */
+        }
+  </style>
+</head>
+<body>
+  <h1>🎀 Priority Table 🎀</h1>
+  <a href="index.html" class="button-link"> Calendar </a>
+  <a href="priority table & tracker .html" class="button-link"> Priority Table & tracker </a>
+
+  <!-- Priority Table -->
+  <div class="priority-table">
+    <div class="priority-cell" id="urgent-important">
+      <h2>Important & Urgent</h2>
+      <button class="add-circum" onclick="openModal('urgent-important')">Add</button>
+      <ul class="circum-list"></ul>
+    </div>
+    <div class="priority-cell" id="not-urgent-important">
+      <h2>Important & Not Urgent</h2>
+      <button class="add-circum" onclick="openModal('not-urgent-important')">Add</button>
+      <ul class="circum-list"></ul>
+    </div>
+    <div class="priority-cell" id="urgent-not-important">
+      <h2>Not Important & Urgent</h2>
+      <button class="add-circum" onclick="openModal('urgent-not-important')">Add</button>
+      <ul class="circum-list"></ul>
+    </div>
+    <div class="priority-cell" id="not-urgent-not-important">
+      <h2>Not Important & Not Urgent</h2>
+      <button class="add-circum" onclick="openModal('not-urgent-not-important')">Add</button>
+      <ul class="circum-list"></ul>
+    </div>
+  </div>
+
+  <!-- Task Completion Tracker -->
+  <h2>🎀 Task Completion Tracker 🎀</h2>
+  <div class="tracker-container">
+    <div class="tracker-bar" id="tracker-bar"></div>
+    <div class="tracker-text" id="tracker-text">0/0 Circums Completed</div>
+  </div>
+
+  <!-- Circum Modal -->
+  <div id="overlay"></div>
+  <div id="circumModal">
+    <h2>Add Task</h2>
+    <input type="text" id="circumTitle" placeholder="Task Title">
+    <button onclick="addCircum()">Add Task</button>
+    <button onclick="closeModal()">Cancel</button>
+  </div>
+
+  <script>
+    let circumData = {}; // Stores the tasks for each category (Urgent, Not Urgent, etc.)
+let completedTasks = 0; // Number of completed tasks
+let totalTasks = 0; // Total number of tasks
+let selectedCellId = ''; // The current selected cell (category)
+
+// Load tasks from localStorage when the page loads
+window.onload = loadTasks;
+
+function openModal(cellId) {
+    selectedCellId = cellId;
+    document.getElementById("overlay").style.display = "block";
+    document.getElementById("circumModal").style.display = "block";
+}
+
+function closeModal() {
+    document.getElementById("overlay").style.display = "none";
+    document.getElementById("circumModal").style.display = "none";
+    document.getElementById("circumTitle").value = ""; // Reset input field
+}
+
+// Save tasks to localStorage
+function saveTasks() {
+    localStorage.setItem('circumData', JSON.stringify(circumData));
+}
+
+// Load tasks from localStorage
+function loadTasks() {
+    const savedTasks = localStorage.getItem('circumData');
+    if (savedTasks) {
+        circumData = JSON.parse(savedTasks); // Load tasks into circumData
+        renderTasks(); // Render tasks after loading
+    }
+}
+
+// Add new task to the selected category
+function addCircum() {
+    const title = document.getElementById("circumTitle").value.trim();
+    if (!title) return; // If input is empty, return without doing anything
+
+    // Add the task to the selected category
+    if (!circumData[selectedCellId]) {
+        circumData[selectedCellId] = [];
+    }
+
+    // Add task as an object with title and completed status
+    circumData[selectedCellId].push({ title: title, completed: false });
+    saveTasks(); // Save the updated tasks to localStorage
+    renderTasks(); // Update the displayed tasks
+    closeModal(); // Close the modal
+}
+
+// Delete task from the selected category
+function deleteCircum(cellId, index) {
+    circumData[cellId].splice(index, 1); // Remove the task from the array
+
+    // If the category is empty, delete it from circumData
+    if (circumData[cellId].length === 0) {
+        delete circumData[cellId];
+    }
+
+    saveTasks(); // Save the updated tasks to localStorage
+    renderTasks(); // Re-render the tasks
+}
+
+// Toggle task completion (mark as completed)
+function completeCircum(cellId, index) {
+    circumData[cellId][index].completed = !circumData[cellId][index].completed;
+    saveTasks(); // Save the updated tasks to localStorage
+    renderTasks(); // Re-render the tasks
+}
+
+// Render tasks to the page
+function renderTasks() {
+    document.querySelectorAll(".circum-list").forEach(list => list.innerHTML = ""); // Clear existing tasks
+
+    // Reset task counters
+    totalTasks = 0;
+    completedTasks = 0;
+
+    // Loop through all categories in circumData
+    for (let cellId in circumData) {
+        const list = document.querySelector(`#${cellId} .circum-list`); // Get the category's task list
+
+        // Loop through each task in the category
+        circumData[cellId].forEach((task, index) => {
+            const item = document.createElement("li");
+            item.textContent = task.title; // Set task text
+
+            // If task is completed, add a class for styling
+            if (task.completed) {
+                item.classList.add("completed");
+            }
+
+            // Create a complete button
+            const completeButton = document.createElement("button");
+            completeButton.textContent = task.completed ? "✔" : "Complete";
+            completeButton.className = "complete-circum";
+            completeButton.onclick = () => completeCircum(cellId, index); // Set the complete function
+
+            // Create a delete button
+            const deleteButton = document.createElement("button");
+            deleteButton.textContent = "X";
+            deleteButton.className = "delete-circum";
+            deleteButton.onclick = () => deleteCircum(cellId, index); // Set the delete function
+
+            item.appendChild(completeButton); // Add the complete button
+            item.appendChild(deleteButton); // Add the delete button
+
+            list.appendChild(item); // Add the task to the category's list
+
+            totalTasks++; // Increase total task count
+            if (task.completed) {
+                completedTasks++; // Increase completed task count if completed
+            }
+        });
+    }
+
+    updateTracker(); // Update the progress tracker
+}
+
+// Update the completion tracker (progress bar)
+function updateTracker() {
+    const progress = totalTasks === 0 ? 0 : (completedTasks / totalTasks) * 100;
+    document.getElementById("tracker-bar").style.width = `${progress}%`; // Update the progress bar width
+    document.getElementById("tracker-text").textContent = `${completedTasks}/${totalTasks} Circums Completed`; // Update the text
+}
+
+  </script>
+</body>
+</html>
